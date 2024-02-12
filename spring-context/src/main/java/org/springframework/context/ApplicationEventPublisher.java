@@ -66,6 +66,7 @@ public interface ApplicationEventPublisher {
 	 * @see #publishEvent(ApplicationEvent)
 	 * @see PayloadApplicationEvent
 	 */
+	// 如果事件不是继承ApplicationEvent，会被包装成PayloadApplicationEvent
 	void publishEvent(Object event);
 
 }

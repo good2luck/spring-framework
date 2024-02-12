@@ -36,6 +36,7 @@ import java.util.EventListener;
  * @see org.springframework.context.event.ApplicationEventMulticaster
  * @see org.springframework.context.event.EventListener
  */
+// 范型要求继承于ApplicationEvent：<E extends ApplicationEvent>
 @FunctionalInterface
 public interface ApplicationListener<E extends ApplicationEvent> extends EventListener {
 

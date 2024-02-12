@@ -58,6 +58,7 @@ final class InstantiationModelAwarePointcutAdvisorImpl
 
 	private transient Method aspectJAdviceMethod;
 
+	// 能够创建Spring AOP Advisors类的工厂接口，实现类：ReflectiveAspectJAdvisorFactory
 	private final AspectJAdvisorFactory aspectJAdvisorFactory;
 
 	private final MetadataAwareAspectInstanceFactory aspectInstanceFactory;
@@ -110,6 +111,7 @@ final class InstantiationModelAwarePointcutAdvisorImpl
 			// A singleton aspect.
 			this.pointcut = this.declaredPointcut;
 			this.lazy = false;
+			// 获取Advice
 			this.instantiatedAdvice = instantiateAdvice(this.declaredPointcut);
 		}
 	}
@@ -145,6 +147,11 @@ final class InstantiationModelAwarePointcutAdvisorImpl
 		return this.instantiatedAdvice;
 	}
 
+	/**
+	 * 实例化Advice
+	 * @param pointcut
+	 * @return
+	 */
 	private Advice instantiateAdvice(AspectJExpressionPointcut pointcut) {
 		Advice advice = this.aspectJAdvisorFactory.getAdvice(this.aspectJAdviceMethod, pointcut,
 				this.aspectInstanceFactory, this.declarationOrder, this.aspectName);

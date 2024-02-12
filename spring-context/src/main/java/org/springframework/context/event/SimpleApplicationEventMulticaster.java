@@ -48,9 +48,11 @@ import org.springframework.util.ErrorHandler;
  */
 public class SimpleApplicationEventMulticaster extends AbstractApplicationEventMulticaster {
 
+	// 支持异步回调监听器
 	@Nullable
 	private Executor taskExecutor;
 
+	// 函数式接口，支持异常处理
 	@Nullable
 	private ErrorHandler errorHandler;
 
@@ -109,6 +111,8 @@ public class SimpleApplicationEventMulticaster extends AbstractApplicationEventM
 	 * @since 4.1
 	 */
 	public void setErrorHandler(@Nullable ErrorHandler errorHandler) {
+		// 设置ErrorHandler，可以通过TaskUtils的ErrorHandler实现类进行赋值，其中指出如果是重复性周期任务建议使用不传播的捕获异常，
+		// 如果是一次性的任务，使用异常传播的的ErrorHandler。
 		this.errorHandler = errorHandler;
 	}
 
@@ -131,16 +135,20 @@ public class SimpleApplicationEventMulticaster extends AbstractApplicationEventM
 	public void multicastEvent(final ApplicationEvent event, @Nullable ResolvableType eventType) {
 		ResolvableType type = (eventType != null ? eventType : resolveDefaultEventType(event));
 		Executor executor = getTaskExecutor();
+		// 循环回调监听器，getApplicationListeners方法继承于抽象父类AbstractApplicationEventMulticaster
 		for (ApplicationListener<?> listener : getApplicationListeners(event, type)) {
 			if (executor != null) {
+				// 线程池执行
 				executor.execute(() -> invokeListener(listener, event));
 			}
 			else {
+				// 同步调用
 				invokeListener(listener, event);
 			}
 		}
 	}
 
+	// ResolvableType是一个解析和操作Java类型信息的api，特别是处理范型类型比较有用
 	private ResolvableType resolveDefaultEventType(ApplicationEvent event) {
 		return ResolvableType.forInstance(event);
 	}
@@ -152,12 +160,15 @@ public class SimpleApplicationEventMulticaster extends AbstractApplicationEventM
 	 * @since 4.1
 	 */
 	protected void invokeListener(ApplicationListener<?> listener, ApplicationEvent event) {
+		// 获取ErrorHandler
 		ErrorHandler errorHandler = getErrorHandler();
 		if (errorHandler != null) {
 			try {
+				// 有errorHandler异常处理，使用try-cache
 				doInvokeListener(listener, event);
 			}
 			catch (Throwable err) {
+				// 回调错误
 				errorHandler.handleError(err);
 			}
 		}
@@ -166,6 +177,11 @@ public class SimpleApplicationEventMulticaster extends AbstractApplicationEventM
 		}
 	}
 
+	/**
+	 * 调用监听器的onApplicationEvent方法
+	 * @param listener：监听器
+	 * @param event：事件
+	 */
 	@SuppressWarnings({"rawtypes", "unchecked"})
 	private void doInvokeListener(ApplicationListener listener, ApplicationEvent event) {
 		try {
@@ -173,6 +189,7 @@ public class SimpleApplicationEventMulticaster extends AbstractApplicationEventM
 		}
 		catch (ClassCastException ex) {
 			String msg = ex.getMessage();
+			// 针对监听器监听的非该event事件的情况
 			if (msg == null || matchesClassCastMessage(msg, event.getClass())) {
 				// Possibly a lambda-defined listener which we could not resolve the generic event type for
 				// -> let's suppress the exception and just log a debug message.
@@ -181,6 +198,7 @@ public class SimpleApplicationEventMulticaster extends AbstractApplicationEventM
 					logger.trace("Non-matching event type for listener: " + listener, ex);
 				}
 			}
+			// 否则抛出异常
 			else {
 				throw ex;
 			}

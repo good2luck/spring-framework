@@ -27,12 +27,14 @@ import java.util.EventObject;
  * @see org.springframework.context.ApplicationListener
  * @see org.springframework.context.event.EventListener
  */
+// 所有自定义事件的基类。
 public abstract class ApplicationEvent extends EventObject {
 
 	/** use serialVersionUID from Spring 1.2 for interoperability. */
 	private static final long serialVersionUID = 7099057708183571937L;
 
 	/** System time when the event happened. */
+	// 事件发生的系统时间
 	private final long timestamp;
 
 
@@ -40,6 +42,7 @@ public abstract class ApplicationEvent extends EventObject {
 	 * Create a new {@code ApplicationEvent}.
 	 * @param source the object on which the event initially occurred or with
 	 * which the event is associated (never {@code null})
+	 * source 不能为null
 	 */
 	public ApplicationEvent(Object source) {
 		super(source);

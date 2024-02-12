@@ -55,6 +55,7 @@ import org.springframework.util.StringUtils;
  * {@link ResolvableType ResolvableTypes}, allowing easy navigation. For example:
  * <pre class="code">
  * private HashMap&lt;Integer, List&lt;String&gt;&gt; myMap;
+ * -> private HashMap<Integer, List<String>> myMap;
  *
  * public void example() {
  *     ResolvableType t = ResolvableType.forField(getClass().getDeclaredField("myMap"));

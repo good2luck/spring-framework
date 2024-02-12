@@ -60,11 +60,16 @@ import org.springframework.util.ObjectUtils;
  * @see #getApplicationListeners(ApplicationEvent, ResolvableType)
  * @see SimpleApplicationEventMulticaster
  */
+// ApplicationEventMulticaster接口的抽象实现
 public abstract class AbstractApplicationEventMulticaster
 		implements ApplicationEventMulticaster, BeanClassLoaderAware, BeanFactoryAware {
 
+	// 默认监听器的回收器，包括所有的。
+	// 以此为锁，保障defaultRetriever中数据操作的线程安全
 	private final DefaultListenerRetriever defaultRetriever = new DefaultListenerRetriever();
 
+	// 监听器缓存，key：事件类型和事件源Class；value：目标监听器集合
+	// 在根据事件类型获取监听器时使用
 	final Map<ListenerCacheKey, CachedListenerRetriever> retrieverCache = new ConcurrentHashMap<>(64);
 
 	@Nullable
@@ -104,6 +109,7 @@ public abstract class AbstractApplicationEventMulticaster
 		synchronized (this.defaultRetriever) {
 			// Explicitly remove target for a proxy, if registered already,
 			// in order to avoid double invocations of the same listener.
+			// 去除代理的事件监听器，防止重复回调。这里代理类，是单例类在aop的场景下经过SingletonTargetSource包装的类
 			Object singletonTarget = AopProxyUtils.getSingletonTarget(listener);
 			if (singletonTarget instanceof ApplicationListener) {
 				this.defaultRetriever.applicationListeners.remove(singletonTarget);
@@ -116,6 +122,7 @@ public abstract class AbstractApplicationEventMulticaster
 	@Override
 	public void addApplicationListenerBean(String listenerBeanName) {
 		synchronized (this.defaultRetriever) {
+			// 通过bean的名称添加
 			this.defaultRetriever.applicationListenerBeans.add(listenerBeanName);
 			this.retrieverCache.clear();
 		}
@@ -153,12 +160,15 @@ public abstract class AbstractApplicationEventMulticaster
 	 * @see org.springframework.context.ApplicationListener
 	 */
 	protected Collection<ApplicationListener<?>> getApplicationListeners() {
+		// 获取所有事件监听器集合
 		synchronized (this.defaultRetriever) {
 			return this.defaultRetriever.getApplicationListeners();
 		}
 	}
 
 	/**
+	 * 获取指定事件类型的监听器集合
+	 *
 	 * Return a Collection of ApplicationListeners matching the given
 	 * event type. Non-matching listeners get excluded early.
 	 * @param event the event to be propagated. Allows for excluding
@@ -169,9 +179,11 @@ public abstract class AbstractApplicationEventMulticaster
 	 */
 	protected Collection<ApplicationListener<?>> getApplicationListeners(
 			ApplicationEvent event, ResolvableType eventType) {
-
+		// 事件源
 		Object source = event.getSource();
+		// 事件源类Class对象
 		Class<?> sourceType = (source != null ? source.getClass() : null);
+		// 监听器缓存key，按事件类型和事件源类型
 		ListenerCacheKey cacheKey = new ListenerCacheKey(eventType, sourceType);
 
 		// Potential new retriever to populate
@@ -192,6 +204,7 @@ public abstract class AbstractApplicationEventMulticaster
 			}
 		}
 
+		// 缓存中有，返回特定事件和事件源类型的监听器集合
 		if (existingRetriever != null) {
 			Collection<ApplicationListener<?>> result = existingRetriever.getApplicationListeners();
 			if (result != null) {
@@ -205,6 +218,8 @@ public abstract class AbstractApplicationEventMulticaster
 	}
 
 	/**
+	 * 返回对应事件和源类型的监听器
+	 *
 	 * Actually retrieve the application listeners for the given event and source type.
 	 * @param eventType the event type
 	 * @param sourceType the event source type
@@ -215,7 +230,10 @@ public abstract class AbstractApplicationEventMulticaster
 			ResolvableType eventType, @Nullable Class<?> sourceType, @Nullable CachedListenerRetriever retriever) {
 
 		List<ApplicationListener<?>> allListeners = new ArrayList<>();
+
+		// retriever不为null时，才会处理filteredListeners和filteredListenerBeans字段。处理完赋值进去。
 		Set<ApplicationListener<?>> filteredListeners = (retriever != null ? new LinkedHashSet<>() : null);
+		// 存在bean名称，且不是单例
 		Set<String> filteredListenerBeans = (retriever != null ? new LinkedHashSet<>() : null);
 
 		Set<ApplicationListener<?>> listeners;
@@ -265,6 +283,7 @@ public abstract class AbstractApplicationEventMulticaster
 						if (retriever != null) {
 							filteredListeners.remove(listener);
 						}
+						// 移除掉不匹配的
 						allListeners.remove(listener);
 					}
 				}
@@ -278,10 +297,13 @@ public abstract class AbstractApplicationEventMulticaster
 		AnnotationAwareOrderComparator.sort(allListeners);
 		if (retriever != null) {
 			if (filteredListenerBeans.isEmpty()) {
+				// 没有该情况：存在bean名称且不是单例的beanName，使用allListeners即可
+				// 如果存在bean名称的数据且是单例，会直接存储对应bean，上层调用时不用再转了。
 				retriever.applicationListeners = new LinkedHashSet<>(allListeners);
 				retriever.applicationListenerBeans = filteredListenerBeans;
 			}
 			else {
+				// 否则使用过滤的filteredListeners bean
 				retriever.applicationListeners = filteredListeners;
 				retriever.applicationListenerBeans = filteredListenerBeans;
 			}
@@ -464,7 +486,7 @@ public abstract class AbstractApplicationEventMulticaster
 
 
 	/**
-	 * Helper class that encapsulates a general set of target listeners.
+	 * Helper class that encapsulates（封装） a general set of target listeners.
 	 */
 	private class DefaultListenerRetriever {
 
