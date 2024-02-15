@@ -33,6 +33,8 @@ import org.springframework.lang.Nullable;
  * annotations, with an order value provided by an {@code Ordered}
  * instance overriding a statically defined annotation value (if any).
  *
+ * AnnotationAwareOrderComparator是OrderComparator的扩展，它支持Spring的Ordered接口以及Order和Priority注解，Ordered实例提供的顺序值将覆盖静态定义的注解值（如果有）。
+ *
  * <p>Consult the Javadoc for {@link OrderComparator} for details on the
  * sort semantics for non-ordered objects.
  *

@@ -93,16 +93,21 @@ public final class SpringFactoriesLoader {
 		Assert.notNull(factoryType, "'factoryType' must not be null");
 		ClassLoader classLoaderToUse = classLoader;
 		if (classLoaderToUse == null) {
+			// 获取当前类的类加载器
 			classLoaderToUse = SpringFactoriesLoader.class.getClassLoader();
 		}
+		// 通过SpringFactoriesLoader.loadFactoryNames方法加载factoryType接口的实现类的全限定名集合
 		List<String> factoryImplementationNames = loadFactoryNames(factoryType, classLoaderToUse);
 		if (logger.isTraceEnabled()) {
 			logger.trace("Loaded [" + factoryType.getName() + "] names: " + factoryImplementationNames);
 		}
 		List<T> result = new ArrayList<>(factoryImplementationNames.size());
+		// 进行实例化
 		for (String factoryImplementationName : factoryImplementationNames) {
+			// instantiateFactory通过反射构造器实例化
 			result.add(instantiateFactory(factoryImplementationName, factoryType, classLoaderToUse));
 		}
+		// 对实例化的对象进行排序，排序规则见AnnotationAwareOrderComparator
 		AnnotationAwareOrderComparator.sort(result);
 		return result;
 	}
@@ -119,31 +124,46 @@ public final class SpringFactoriesLoader {
 	 */
 	public static List<String> loadFactoryNames(Class<?> factoryType, @Nullable ClassLoader classLoader) {
 		String factoryTypeName = factoryType.getName();
+		// 加载全部的spring.factories文件中的配置信息，然后根据factoryTypeName（配置文件中的key）获取对应的value集合
 		return loadSpringFactories(classLoader).getOrDefault(factoryTypeName, Collections.emptyList());
 	}
 
+	/**
+	 * 加载FACTORIES_RESOURCE_LOCATION文件中的配置信息，并返回一个Map对象
+	 * @param classLoader
+	 * @return
+	 */
 	private static Map<String, List<String>> loadSpringFactories(@Nullable ClassLoader classLoader) {
+		// 获取缓存中的数据
 		MultiValueMap<String, String> result = cache.get(classLoader);
+		// 如果缓存中有数据，则直接返回
 		if (result != null) {
 			return result;
 		}
 
 		try {
+			// 通过类加载器加载FACTORIES_RESOURCE_LOCATION（META-INF/spring.factories）文件
 			Enumeration<URL> urls = (classLoader != null ?
 					classLoader.getResources(FACTORIES_RESOURCE_LOCATION) :
 					ClassLoader.getSystemResources(FACTORIES_RESOURCE_LOCATION));
 			result = new LinkedMultiValueMap<>();
 			while (urls.hasMoreElements()) {
+				// 获取URL
 				URL url = urls.nextElement();
+				// 加载配置文件，获得Properties对象
 				UrlResource resource = new UrlResource(url);
 				Properties properties = PropertiesLoaderUtils.loadProperties(resource);
 				for (Map.Entry<?, ?> entry : properties.entrySet()) {
+					// 将配置文件中的配置信息放入result中
 					String factoryTypeName = ((String) entry.getKey()).trim();
+					// 通过逗号分隔的字符串，将其转换为List，并遍历放入result中
 					for (String factoryImplementationName : StringUtils.commaDelimitedListToStringArray((String) entry.getValue())) {
+						// factoryTypeName为key（全限定名），factoryImplementationName为value（全限定名）
 						result.add(factoryTypeName, factoryImplementationName.trim());
 					}
 				}
 			}
+			// 将result放入缓存中，key为classLoader，所以会加载classLoader下的所有配置文件
 			cache.put(classLoader, result);
 			return result;
 		}
